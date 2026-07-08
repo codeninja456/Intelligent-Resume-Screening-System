@@ -252,33 +252,6 @@ def extract_experience(text: str) -> Tuple[List[Dict[str, Any]], int]:
         })
         total_months += duration_months
 
-    # If no entries were found, but there is some text, let's provide a single default entry
-    if not experience_list and len(text.strip()) > 100:
-        # Fallback heuristic: search for any years in the document
-        years = [int(y) for y in re.findall(r'\b(20\d{2}|19\d{2})\b', text)]
-        if len(years) >= 2:
-            min_y, max_y = min(years), max(years)
-            if max_y - min_y < 50: # sensible career duration
-                total_months = (max_y - min_y) * 12
-                total_months = max(12, total_months)
-                experience_list.append({
-                    "company": "Company (Extracted)",
-                    "role": "Professional Role",
-                    "duration_months": total_months,
-                    "duration_str": f"{min_y} - {max_y}",
-                    "description": "Work history extracted from resume text."
-                })
-        else:
-            # Guess 1 year experience if some text exists
-            total_months = 12
-            experience_list.append({
-                "company": "Company",
-                "role": "Candidate",
-                "duration_months": 12,
-                "duration_str": "1 Year",
-                "description": "General work experience."
-            })
-            
     return experience_list, total_months
 
 def extract_education(text: str) -> List[Dict[str, Any]]:
@@ -355,14 +328,6 @@ def extract_education(text: str) -> List[Dict[str, Any]]:
             seen.add(key)
             deduped.append(ed)
             
-    # If nothing found, provide a fallback Bachelor's degree
-    if not deduped:
-        deduped.append({
-            "degree": "Bachelor of Science",
-            "institution": "University (Extracted)",
-            "year": "N/A"
-        })
-        
     return deduped
 
 def extract_certifications(text: str) -> List[str]:
@@ -425,13 +390,13 @@ def parse_resume(file_bytes: bytes, file_name: str, taxonomy: List[str]) -> Dict
     
     # Extract Contact Info
     emails = EMAIL_REGEX.findall(raw_text)
-    email = emails[0] if emails else "candidate@example.com"
+    email = emails[0] if emails else ""
     
     phones = PHONE_REGEX.findall(raw_text)
-    phone = phones[0] if phones else "555-0100"
+    phone = phones[0] if phones else ""
     
     # Extract Name (Heuristic + spaCy)
-    name = "Candidate Name"
+    name = ""
     try:
         # look at first 400 chars for name
         doc = nlp_model(raw_text[:400])
@@ -441,7 +406,7 @@ def parse_resume(file_bytes: bytes, file_name: str, taxonomy: List[str]) -> Dict
                 if "\n" not in ent_text and 1 < len(ent_text.split()) < 4:
                     name = ent_text
                     break
-        if name == "Candidate Name":
+        if not name:
             # fallback first non-empty line
             lines = [l.strip() for l in raw_text.split('\n') if l.strip()]
             if lines:
